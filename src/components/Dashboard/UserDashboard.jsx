@@ -1,4 +1,9 @@
 import React, { useState } from 'react';
+import { User, Package, ShoppingCart, Settings as SettingsIcon, LogOut, List, Home } from 'lucide-react';
+import Profile from './Profile';
+import MyPurchases from './MyPurchases';
+import Settings from './Settings';
+import ProductListing from '../ProductListing/ProductListing';
 
 // Top Bar Component
 const TopBar = ({ onMenuToggle }) => {
@@ -43,17 +48,25 @@ const TopBar = ({ onMenuToggle }) => {
 };
 
 // Sidebar Component
-const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
+const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen, currentPage, setCurrentPage }) => {
     const navItems = [
-        { text: 'Profile', href: '#' },
-        { text: 'My Listings', href: '#' },
-        { text: 'My Purchases', href: '#' },
-        { text: 'Settings', href: '#' },
-        { text: 'Logout', href: '#' }
+        { text: 'Profile', key: 'profile', icon: <User className="w-4 h-4" /> },
+        { text: 'My Listings', key: 'listings', icon: <List className="w-4 h-4" /> },
+        { text: 'My Purchases', key: 'purchases', icon: <ShoppingCart className="w-4 h-4" /> },
+        { text: 'Settings', key: 'settings', icon: <SettingsIcon className="w-4 h-4" /> },
+        { text: 'Logout', key: 'logout', icon: <LogOut className="w-4 h-4" /> }
     ];
 
     const handleNavClick = (item) => {
-        alert(`Navigate to ${item.text}`);
+        if (item.key === 'logout') {
+            if (window.confirm('Are you sure you want to logout?')) {
+                // Handle logout logic here
+                window.location.href = '/';
+            }
+            return;
+        }
+        
+        setCurrentPage(item.key);
         if (setIsMobileMenuOpen) {
             setIsMobileMenuOpen(false);
         }
@@ -68,8 +81,11 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                     <button
                         key={index}
                         onClick={() => handleNavClick(item)}
-                        className="text-white text-left no-underline py-3 px-4 rounded-md mb-5 block transition-colors duration-300 hover:bg-slate-700 w-full"
+                        className={`text-white text-left no-underline py-3 px-4 rounded-md mb-5 flex items-center gap-3 transition-colors duration-300 hover:bg-slate-700 w-full ${
+                            currentPage === item.key ? 'bg-slate-700' : ''
+                        }`}
                     >
+                        {item.icon}
                         {item.text}
                     </button>
                 ))}
@@ -93,8 +109,11 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
                             <button
                                 key={index}
                                 onClick={() => handleNavClick(item)}
-                                className="text-white text-left no-underline py-3 px-4 rounded-md mb-5 block transition-colors duration-300 hover:bg-slate-700 w-full"
+                                className={`text-white text-left no-underline py-3 px-4 rounded-md mb-5 flex items-center gap-3 transition-colors duration-300 hover:bg-slate-700 w-full ${
+                                    currentPage === item.key ? 'bg-slate-700' : ''
+                                }`}
                             >
+                                {item.icon}
                                 {item.text}
                             </button>
                         ))}
@@ -105,144 +124,27 @@ const Sidebar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
     );
 };
 
-// Profile Picture Component
-const ProfilePicture = ({ profileImage, onImageChange }) => {
-    const handleFileChange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                onImageChange(e.target.result);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
 
-    return (
-        <div className="relative w-36 h-36 mx-auto mb-5">
-            <div
-                className="w-36 h-36 rounded-full border-2 border-gray-300 bg-cover bg-center"
-                style={{
-                    backgroundImage: `url(${profileImage || 'https://via.placeholder.com/140'})`
-                }}
-            />
-            <label
-                htmlFor="fileInput"
-                className="absolute bottom-2 right-2 bg-slate-800 text-white border-2 border-white rounded-full w-8 h-8 flex justify-center items-center cursor-pointer text-sm hover:bg-slate-700 transition-colors"
-            >
-                ✏️
-            </label>
-            <input
-                type="file"
-                id="fileInput"
-                accept="image/*"
-                hidden
-                onChange={handleFileChange}
-            />
-        </div>
-    );
-};
-
-// Form Input Component
-const FormInput = ({ type, placeholder, value, onChange }) => {
-    return (
-        <input
-            className="w-full h-11 border border-gray-300 rounded-md my-2 px-3 text-base outline-none transition-colors focus:border-slate-800"
-            type={type}
-            placeholder={placeholder}
-            value={value}
-            onChange={onChange}
-        />
-    );
-};
-
-// Navigation Buttons Component
-const NavButtons = ({ onSave, onCancel }) => {
-    return (
-        <div className="flex gap-4 mt-6">
-            <button
-                className="py-3 px-5 bg-slate-800 text-white rounded-md cursor-pointer transition-colors hover:bg-slate-700"
-                onClick={onSave}
-            >
-                Save
-            </button>
-            <button
-                className="py-3 px-5 bg-slate-800 text-white rounded-md cursor-pointer transition-colors hover:bg-slate-700"
-                onClick={onCancel}
-            >
-                Cancel
-            </button>
-        </div>
-    );
-};
-
-// Profile Section Component
-const ProfileSection = () => {
-    const [profileImage, setProfileImage] = useState('');
-    const [formData, setFormData] = useState({
-        userName: '',
-        userEmail: '',
-        otherInfo: ''
-    });
-
-    const handleInputChange = (field) => (e) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: e.target.value
-        }));
-    };
-
-    const handleSave = () => {
-        console.log('Saving profile data:', { formData, profileImage });
-        alert('Profile saved successfully!');
-    };
-
-    const handleCancel = () => {
-        setFormData({
-            userName: '',
-            userEmail: '',
-            otherInfo: ''
-        });
-        setProfileImage('');
-        alert('Changes cancelled');
-    };
-
-    return (
-        <div className="bg-white rounded-xl p-8 max-w-3xl mx-auto shadow-lg">
-            <ProfilePicture
-                profileImage={profileImage}
-                onImageChange={setProfileImage}
-            />
-
-            <FormInput
-                type="text"
-                placeholder="User Name"
-                value={formData.userName}
-                onChange={handleInputChange('userName')}
-            />
-
-            <FormInput
-                type="email"
-                placeholder="User Email"
-                value={formData.userEmail}
-                onChange={handleInputChange('userEmail')}
-            />
-
-            <FormInput
-                type="text"
-                placeholder="Other Info"
-                value={formData.otherInfo}
-                onChange={handleInputChange('otherInfo')}
-            />
-
-            <NavButtons onSave={handleSave} onCancel={handleCancel} />
-        </div>
-    );
+// Page Content Renderer
+const renderPageContent = (currentPage) => {
+    switch (currentPage) {
+        case 'profile':
+            return <Profile />;
+        case 'listings':
+            return <ProductListing />;
+        case 'purchases':
+            return <MyPurchases />;
+        case 'settings':
+            return <Settings />;
+        default:
+            return <Profile />;
+    }
 };
 
 // Main App Component
 const UserDashBoard = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState('profile');
 
     const handleMenuToggle = () => {
         setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -253,11 +155,13 @@ const UserDashBoard = () => {
             <TopBar onMenuToggle={handleMenuToggle} />
             <Sidebar 
                 isMobileMenuOpen={isMobileMenuOpen} 
-                setIsMobileMenuOpen={setIsMobileMenuOpen} 
+                setIsMobileMenuOpen={setIsMobileMenuOpen}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
             />
 
             <main className="lg:ml-56 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                <ProfileSection />
+                {renderPageContent(currentPage)}
             </main>
         </div>
     );
