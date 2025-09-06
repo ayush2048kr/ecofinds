@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { auth } from '../../firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 const Auth = () => {
     // State management
-    const [activeTab, setActiveTab] = useState('signup');
+    const [activeTab, setActiveTab] = useState('login');
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [errors, setErrors] = useState({});
     const [showPasswords, setShowPasswords] = useState({
         signup: false,
         confirm: false,
@@ -28,6 +33,8 @@ const Auth = () => {
         color: 'bg-red-500',
         text: 'Weak'
     });
+
+    const navigate = useNavigate();
 
     // Initialize theme from localStorage
     useEffect(() => {
@@ -96,36 +103,130 @@ const Auth = () => {
         setPasswordStrength({ width, color, text });
     };
 
+    // Enhanced error handling
+    const getErrorMessage = (error) => {
+        switch (error.code) {
+            case 'auth/user-not-found':
+                return 'No account found with this email address';
+            case 'auth/wrong-password':
+                return 'Incorrect password. Please try again';
+            case 'auth/email-already-in-use':
+                return 'An account with this email already exists';
+            case 'auth/weak-password':
+                return 'Password should be at least 6 characters long';
+            case 'auth/invalid-email':
+                return 'Please enter a valid email address';
+            case 'auth/too-many-requests':
+                return 'Too many failed attempts. Please try again later';
+            default:
+                return error.message || 'An error occurred. Please try again';
+        }
+    };
+
     // Form handlers
     const handleSignupChange = (field, value) => {
         setSignupForm(prev => ({ ...prev, [field]: value }));
         if (field === 'password') {
             checkPasswordStrength(value);
         }
+        // Clear errors when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+        }
     };
 
     const handleLoginChange = (field, value) => {
         setLoginForm(prev => ({ ...prev, [field]: value }));
+        // Clear errors when user starts typing
+        if (errors[field]) {
+            setErrors(prev => ({ ...prev, [field]: '' }));
+        }
     };
 
-    const handleSignupSubmit = (e) => {
+    const handleSignupSubmit = async (e) => {
         e.preventDefault();
-        console.log("Sign up:", signupForm);
-        // Add your signup logic here
+        setIsLoading(true);
+        setErrors({});
+
+        // Validation
+        const newErrors = {};
+        if (!signupForm.displayName.trim()) newErrors.displayName = 'Display name is required';
+        if (!signupForm.email.trim()) newErrors.email = 'Email is required';
+        if (!signupForm.password) newErrors.password = 'Password is required';
+        if (signupForm.password !== signupForm.confirmPassword) {
+            newErrors.confirmPassword = 'Passwords do not match';
+        }
+        if (signupForm.password && signupForm.password.length < 6) {
+            newErrors.password = 'Password must be at least 6 characters long';
+        }
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, signupForm.email, signupForm.password);
+            await updateProfile(userCredential.user, {
+                displayName: signupForm.displayName
+            });
+            
+            // Clear form
+            setSignupForm({ displayName: '', email: '', password: '', confirmPassword: '' });
+            
+            // Success feedback
+            alert('🎉 Account created successfully! Welcome to EcoFinds!');
+            navigate('/');
+        } catch (error) {
+            setErrors({ general: getErrorMessage(error) });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
-        console.log("Login:", loginForm);
-        // Add your login logic here
+        setIsLoading(true);
+        setErrors({});
+
+        // Validation
+        const newErrors = {};
+        if (!loginForm.email.trim()) newErrors.email = 'Email is required';
+        if (!loginForm.password) newErrors.password = 'Password is required';
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            setIsLoading(false);
+            return;
+        }
+
+        try {
+            await signInWithEmailAndPassword(auth, loginForm.email, loginForm.password);
+            
+            // Clear form
+            setLoginForm({ email: '', password: '' });
+            
+            // Success feedback
+            alert('✅ Welcome back! You have been logged in successfully.');
+            navigate('/');
+        } catch (error) {
+            setErrors({ general: getErrorMessage(error) });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     // Validation
     const isSignupValid = () => {
         return signupForm.password === signupForm.confirmPassword &&
-            signupForm.password.length > 0 &&
+            signupForm.password.length >= 6 &&
             signupForm.displayName.trim() &&
             signupForm.email.trim();
+    };
+
+    const isLoginValid = () => {
+        return loginForm.email.trim() && loginForm.password;
     };
 
     const passwordsMatch = signupForm.password === signupForm.confirmPassword && signupForm.password.length > 0;
@@ -170,6 +271,17 @@ const Auth = () => {
     return (
         <div className={`font-sans min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-gray-900 text-gray-50' : 'bg-gray-50 text-gray-900'}`}>
             <div className="min-h-screen flex flex-col items-center justify-center p-6">
+                {/* Back to Home Button */}
+                <button
+                    onClick={() => navigate('/')}
+                    className="absolute top-4 left-4 p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:scale-110 transition-transform duration-200 flex items-center gap-2"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    <span className="hidden sm:inline text-sm font-medium">Back</span>
+                </button>
+
                 {/* Dark/Light Mode Toggle */}
                 <button
                     onClick={toggleTheme}
@@ -192,132 +304,38 @@ const Auth = () => {
                 {/* Main Content: Tabbed Forms */}
                 <div className="w-full max-w-md">
                     <div className="w-full">
+                        {/* General Error Message */}
+                        {errors.general && (
+                            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                <p className="text-red-600 dark:text-red-400 text-sm">{errors.general}</p>
+                            </div>
+                        )}
+
                         {/* Tabs List */}
                         <div className="grid w-full grid-cols-2 mb-8 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                             <button
-                                onClick={() => setActiveTab('signup')}
-                                className={`p-3 rounded-md transition-colors duration-200 ${activeTab === 'signup'
-                                        ? 'bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-900'
-                                        : 'text-gray-500 dark:text-gray-500'
-                                    }`}
-                            >
-                                Sign Up
-                            </button>
-                            <button
                                 onClick={() => setActiveTab('login')}
                                 className={`p-3 rounded-md transition-colors duration-200 ${activeTab === 'login'
-                                        ? 'bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-900'
-                                        : 'text-gray-500 dark:text-gray-500'
+                                    ? 'bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-900'
+                                    : 'text-gray-500 dark:text-gray-500'
                                     }`}
                             >
                                 Login
                             </button>
+                            <button
+                                onClick={() => setActiveTab('signup')}
+                                className={`p-3 rounded-md transition-colors duration-200 ${activeTab === 'signup'
+                                    ? 'bg-white dark:bg-gray-50 text-gray-900 dark:text-gray-900'
+                                    : 'text-gray-500 dark:text-gray-500'
+                                    }`}
+                            >
+                                Sign Up
+                            </button>
                         </div>
-
-                        {/* Tab Content */}
-                        {/* Sign Up Form */}
-                        {activeTab === 'signup' && (
-                            <div className="rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
-                                <div className="text-center">
-                                    <h2 className="text-2xl text-gray-900 dark:text-gray-50 font-semibold">Create Account</h2>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Join us in giving products a second chance</p>
-                                </div>
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
-                                        <input
-                                            id="display-name"
-                                            type="text"
-                                            placeholder="Enter your display name"
-                                            required
-                                            value={signupForm.displayName}
-                                            onChange={(e) => handleSignupChange('displayName', e.target.value)}
-                                            className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                                        <input
-                                            id="signup-email"
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            required
-                                            value={signupForm.email}
-                                            onChange={(e) => handleSignupChange('email', e.target.value)}
-                                            className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                                        <div className="relative">
-                                            <input
-                                                id="signup-password"
-                                                type={showPasswords.signup ? "text" : "password"}
-                                                placeholder="Create a password"
-                                                required
-                                                value={signupForm.password}
-                                                onChange={(e) => handleSignupChange('password', e.target.value)}
-                                                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => togglePasswordVisibility('signup')}
-                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-r-md"
-                                            >
-                                                {showPasswords.signup ? <EyeOffIcon /> : <EyeIcon />}
-                                            </button>
-                                        </div>
-                                        {/* Password Strength Indicator */}
-                                        <div className="mt-2">
-                                            <div className="flex h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                                                <div
-                                                    className={`h-full transition-all duration-300 ease-in-out ${passwordStrength.color}`}
-                                                    style={{ width: `${passwordStrength.width}%` }}
-                                                ></div>
-                                            </div>
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                Password strength: {passwordStrength.text}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
-                                        <div className="relative">
-                                            <input
-                                                id="confirm-password"
-                                                type={showPasswords.confirm ? "text" : "password"}
-                                                placeholder="Confirm your password"
-                                                required
-                                                value={signupForm.confirmPassword}
-                                                onChange={(e) => handleSignupChange('confirmPassword', e.target.value)}
-                                                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => togglePasswordVisibility('confirm')}
-                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-r-md"
-                                            >
-                                                {showPasswords.confirm ? <EyeOffIcon /> : <EyeIcon />}
-                                            </button>
-                                        </div>
-                                        {!passwordsMatch && signupForm.confirmPassword && (
-                                            <p className="text-sm text-red-600">Passwords do not match</p>
-                                        )}
-                                    </div>
-                                    <button
-                                        onClick={handleSignupSubmit}
-                                        disabled={!isSignupValid()}
-                                        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:bg-gray-400 transition-colors duration-200"
-                                    >
-                                        Create Account
-                                    </button>
-                                </div>
-                            </div>
-                        )}
 
                         {/* Login Form */}
                         {activeTab === 'login' && (
-                            <div className="rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                            <form onSubmit={handleLoginSubmit} className="rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
                                 <div className="text-center">
                                     <h2 className="text-2xl text-gray-900 dark:text-gray-50 font-semibold">Welcome Back</h2>
                                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Sign in to your account to continue</p>
@@ -332,8 +350,10 @@ const Auth = () => {
                                             required
                                             value={loginForm.email}
                                             onChange={(e) => handleLoginChange('email', e.target.value)}
-                                            className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                            className={`flex h-10 w-full rounded-md border ${errors.email ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                            disabled={isLoading}
                                         />
+                                        {errors.email && <p className="text-sm text-red-600 dark:text-red-400">{errors.email}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <label htmlFor="login-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
@@ -345,25 +365,161 @@ const Auth = () => {
                                                 required
                                                 value={loginForm.password}
                                                 onChange={(e) => handleLoginChange('password', e.target.value)}
-                                                className="flex h-10 w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10"
+                                                className={`flex h-10 w-full rounded-md border ${errors.password ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10`}
+                                                disabled={isLoading}
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => togglePasswordVisibility('login')}
                                                 className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-r-md"
+                                                disabled={isLoading}
                                             >
                                                 {showPasswords.login ? <EyeOffIcon /> : <EyeIcon />}
                                             </button>
                                         </div>
+                                        {errors.password && <p className="text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
                                     </div>
                                     <button
-                                        onClick={handleLoginSubmit}
-                                        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors duration-200"
+                                        type="submit"
+                                        disabled={!isLoginValid() || isLoading}
+                                        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
                                     >
-                                        Sign In
+                                        {isLoading ? (
+                                            <div className="flex items-center justify-center">
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Signing In...
+                                            </div>
+                                        ) : (
+                                            'Sign In'
+                                        )}
                                     </button>
                                 </div>
-                            </div>
+                            </form>
+                        )}
+
+                        {/* Sign Up Form */}
+                        {activeTab === 'signup' && (
+                            <form onSubmit={handleSignupSubmit} className="rounded-lg border bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
+                                <div className="text-center">
+                                    <h2 className="text-2xl text-gray-900 dark:text-gray-50 font-semibold">Create Account</h2>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Join us in giving products a second chance</p>
+                                </div>
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label htmlFor="display-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
+                                        <input
+                                            id="display-name"
+                                            type="text"
+                                            placeholder="Enter your display name"
+                                            required
+                                            value={signupForm.displayName}
+                                            onChange={(e) => handleSignupChange('displayName', e.target.value)}
+                                            className={`flex h-10 w-full rounded-md border ${errors.displayName ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                            disabled={isLoading}
+                                        />
+                                        {errors.displayName && <p className="text-sm text-red-600 dark:text-red-400">{errors.displayName}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="signup-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                                        <input
+                                            id="signup-email"
+                                            type="email"
+                                            placeholder="Enter your email"
+                                            required
+                                            value={signupForm.email}
+                                            onChange={(e) => handleSignupChange('email', e.target.value)}
+                                            className={`flex h-10 w-full rounded-md border ${errors.email ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+                                            disabled={isLoading}
+                                        />
+                                        {errors.email && <p className="text-sm text-red-600 dark:text-red-400">{errors.email}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="signup-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                                        <div className="relative">
+                                            <input
+                                                id="signup-password"
+                                                type={showPasswords.signup ? "text" : "password"}
+                                                placeholder="Create a password"
+                                                required
+                                                value={signupForm.password}
+                                                onChange={(e) => handleSignupChange('password', e.target.value)}
+                                                className={`flex h-10 w-full rounded-md border ${errors.password ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10`}
+                                                disabled={isLoading}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => togglePasswordVisibility('signup')}
+                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-r-md"
+                                                disabled={isLoading}
+                                            >
+                                                {showPasswords.signup ? <EyeOffIcon /> : <EyeIcon />}
+                                            </button>
+                                        </div>
+                                        {/* Password Strength Indicator */}
+                                        {signupForm.password && (
+                                            <div className="mt-2">
+                                                <div className="flex h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                                                    <div
+                                                        className={`h-full transition-all duration-300 ease-in-out ${passwordStrength.color}`}
+                                                        style={{ width: `${passwordStrength.width}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    Password strength: {passwordStrength.text}
+                                                </p>
+                                            </div>
+                                        )}
+                                        {errors.password && <p className="text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                                        <div className="relative">
+                                            <input
+                                                id="confirm-password"
+                                                type={showPasswords.confirm ? "text" : "password"}
+                                                placeholder="Confirm your password"
+                                                required
+                                                value={signupForm.confirmPassword}
+                                                onChange={(e) => handleSignupChange('confirmPassword', e.target.value)}
+                                                className={`flex h-10 w-full rounded-md border ${errors.confirmPassword ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'} bg-white dark:bg-gray-900 px-3 py-2 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 pr-10`}
+                                                disabled={isLoading}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => togglePasswordVisibility('confirm')}
+                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-r-md"
+                                                disabled={isLoading}
+                                            >
+                                                {showPasswords.confirm ? <EyeOffIcon /> : <EyeIcon />}
+                                            </button>
+                                        </div>
+                                        {!passwordsMatch && signupForm.confirmPassword && (
+                                            <p className="text-sm text-red-600 dark:text-red-400">Passwords do not match</p>
+                                        )}
+                                        {errors.confirmPassword && <p className="text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>}
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={!isSignupValid() || isLoading}
+                                        className="w-full rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+                                    >
+                                        {isLoading ? (
+                                            <div className="flex items-center justify-center">
+                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Creating Account...
+                                            </div>
+                                        ) : (
+                                            'Create Account'
+                                        )}
+                                    </button>
+                                </div>
+                            </form>
                         )}
                     </div>
                 </div>

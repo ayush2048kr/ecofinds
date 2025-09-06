@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, User, Star, ArrowRight, Check, Zap, Shield, Truck, Heart, Menu, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Auth from '../Auth/Auth';
 
 const LandingPage = () => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [currentSlide, setCurrentSlide] = useState(0);
     const [hoveredProduct, setHoveredProduct] = useState(null);
+    const navigate = useNavigate();
 
     const heroSlides = [
         {
@@ -73,7 +76,7 @@ const LandingPage = () => {
         <div className="min-h-screen bg-white">
             {/* Header */}
             <header className="relative bg-white shadow-lg border-b z-50">
-                <div className=" mx-auto">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}
                         <div className="flex items-center">
@@ -99,16 +102,24 @@ const LandingPage = () => {
 
                         {/* Desktop Navigation */}
                         <div className="hidden md:flex items-center space-x-6">
-                            <button className="relative hover:text-purple-600 transition-colors">
+                            <button 
+                                className="relative hover:text-purple-600 transition-colors"
+                                onClick={() => navigate('/card-page')}
+                                title="View Shopping Cart"
+                            >
                                 <ShoppingCart className="w-6 h-6" />
                                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                                     3
                                 </span>
                             </button>
-                            <button className="hover:text-purple-600 transition-colors">
+                            <button 
+                                className="hover:text-purple-600 transition-colors"
+                                onClick={() => navigate('/user-dashboard')}
+                                title="User Profile"
+                            >
                                 <User className="w-6 h-6" />
                             </button>
-                            <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full hover:shadow-lg transition-all">
+                            <button className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-2 rounded-full hover:shadow-lg transition-all" onClick={() => navigate('/auth')}>
                                 Sign In
                             </button>
                         </div>
@@ -124,31 +135,45 @@ const LandingPage = () => {
                 </div>
 
                 {/* Mobile menu */}
-                {isMenuOpen && (
-                    <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-t shadow-lg">
-                        <div className="px-4 py-4 space-y-4">
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    placeholder="Search products..."
-                                    className="w-full h-10 pl-4 pr-10 border border-gray-300 rounded-lg"
-                                />
-                                <Search className="absolute right-3 top-2 w-6 h-6 text-gray-400" />
+                {
+                    isMenuOpen && (
+                        <div className="md:hidden absolute top-16 left-0 right-0 bg-white border-t shadow-lg">
+                            <div className="px-4 py-4 space-y-4">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search products..."
+                                        className="w-full h-10 pl-4 pr-10 border border-gray-300 rounded-lg"
+                                    />
+                                    <Search className="absolute right-3 top-2 w-6 h-6 text-gray-400" />
+                                </div>
+                                <button 
+                                    className="flex items-center justify-between w-full py-2"
+                                    onClick={() => {
+                                        navigate('/card-page');
+                                        setIsMenuOpen(false);
+                                    }}
+                                >
+                                    <span>Cart</span>
+                                    <ShoppingCart className="w-5 h-5" />
+                                </button>
+                                <button 
+                                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg"
+                                    onClick={() => {
+                                        navigate('/auth');
+                                        setIsMenuOpen(false);
+                                    }}
+                                >
+                                    Sign In
+                                </button>
                             </div>
-                            <button className="flex items-center justify-between w-full py-2">
-                                <span>Cart</span>
-                                <ShoppingCart className="w-5 h-5" />
-                            </button>
-                            <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-lg">
-                                Sign In
-                            </button>
                         </div>
-                    </div>
-                )}
-            </header>
+                    )
+                }
+            </header >
 
             {/* Hero Section */}
-            <section className="relative overflow-hidden">
+            < section className="relative overflow-hidden" >
                 <div className={`h-96 bg-gradient-to-r ${heroSlides[currentSlide].bg} flex items-center justify-center transition-all duration-1000`}>
                     <div className="text-center text-white px-4 max-w-4xl mx-auto">
                         <h1 className="text-4xl md:text-6xl font-bold mb-4 animate-pulse">
@@ -158,11 +183,17 @@ const LandingPage = () => {
                             {heroSlides[currentSlide].subtitle}
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                            <button className="bg-white text-gray-900 px-8 py-4 rounded-full font-semibold hover:shadow-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2">
+                            <button 
+                                className="bg-white text-gray-900 px-8 py-4 rounded-full font-semibold hover:shadow-xl transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                                onClick={() => navigate('/product-listing')}
+                            >
                                 Shop Now
                                 <ArrowRight className="w-5 h-5" />
                             </button>
-                            <button className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all">
+                            <button 
+                                className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-gray-900 transition-all"
+                                onClick={() => alert('Learn more about our amazing products and services!')}
+                            >
                                 Learn More
                             </button>
                         </div>
@@ -180,10 +211,10 @@ const LandingPage = () => {
                         />
                     ))}
                 </div>
-            </section>
+            </section >
 
             {/* Features Section */}
-            <section className="py-16 bg-gray-50">
+            < section className="py-16 bg-gray-50" >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {features.map((feature, index) => (
@@ -197,10 +228,10 @@ const LandingPage = () => {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Featured Products */}
-            <section className="py-16">
+            < section className="py-16" >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">Featured Products</h2>
@@ -238,10 +269,19 @@ const LandingPage = () => {
                                     <p className="text-2xl font-bold text-purple-600 mb-4">
                                         ${product.price}
                                     </p>
-                                    <button className={`w-full py-3 rounded-lg font-semibold transition-all ${hoveredProduct === product.id
-                                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}>
+                                    <button 
+                                        className={`w-full py-3 rounded-lg font-semibold transition-all ${hoveredProduct === product.id
+                                            ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                        onClick={() => {
+                                            if (hoveredProduct === product.id) {
+                                                alert(`Added ${product.name} to cart!`);
+                                            } else {
+                                                alert(`Viewing details for ${product.name}`);
+                                            }
+                                        }}
+                                    >
                                         {hoveredProduct === product.id ? 'Add to Cart' : 'View Details'}
                                     </button>
                                 </div>
@@ -249,10 +289,10 @@ const LandingPage = () => {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Categories Section */}
-            <section className="py-16 bg-gray-50">
+            < section className="py-16 bg-gray-50" >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">Shop by Category</h2>
@@ -264,6 +304,7 @@ const LandingPage = () => {
                             <div
                                 key={index}
                                 className="bg-white rounded-xl p-6 text-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer group"
+                                onClick={() => alert(`Browsing ${category.name} category with ${category.count} items`)}
                             >
                                 <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
                                     {category.icon}
@@ -276,10 +317,10 @@ const LandingPage = () => {
                         ))}
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Newsletter Section */}
-            <section className="py-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
+            < section className="py-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white" >
                 <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
                     <h2 className="text-3xl md:text-4xl font-bold mb-4">Stay in the Loop</h2>
                     <p className="text-xl mb-8 opacity-90">
@@ -290,8 +331,20 @@ const LandingPage = () => {
                             type="email"
                             placeholder="Enter your email"
                             className="flex-1 px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-4 focus:ring-white/30"
+                            id="newsletter-email"
                         />
-                        <button className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all transform hover:scale-105">
+                        <button 
+                            className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all transform hover:scale-105"
+                            onClick={() => {
+                                const email = document.getElementById('newsletter-email').value;
+                                if (email) {
+                                    alert(`Thank you for subscribing with ${email}!`);
+                                    document.getElementById('newsletter-email').value = '';
+                                } else {
+                                    alert('Please enter a valid email address.');
+                                }
+                            }}
+                        >
                             Subscribe
                         </button>
                     </div>
@@ -300,10 +353,10 @@ const LandingPage = () => {
                         <span>No spam, unsubscribe anytime</span>
                     </div>
                 </div>
-            </section>
+            </section >
 
             {/* Footer */}
-            <footer className="bg-gray-900 text-white py-12">
+            < footer className="bg-gray-900 text-white py-12" >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div>
@@ -348,8 +401,8 @@ const LandingPage = () => {
                         <p>&copy; 2025 ShopHub. All rights reserved.</p>
                     </div>
                 </div>
-            </footer>
-        </div>
+            </footer >
+        </div >
     );
 };
 
